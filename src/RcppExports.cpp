@@ -159,6 +159,22 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// DKsmoothMF
+List DKsmoothMF(arma::mat B, arma::mat q, arma::mat H, arma::vec R, arma::mat Y, arma::mat W);
+RcppExport SEXP _VARMA_DKsmoothMF(SEXP BSEXP, SEXP qSEXP, SEXP HSEXP, SEXP RSEXP, SEXP YSEXP, SEXP WSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::mat >::type B(BSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type q(qSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type H(HSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type R(RSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type Y(YSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type W(WSEXP);
+    rcpp_result_gen = Rcpp::wrap(DKsmoothMF(B, q, H, R, Y, W));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_VARMA_mvrnrm", (DL_FUNC) &_VARMA_mvrnrm, 3},
@@ -172,6 +188,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_VARMA_VARMA_MSE", (DL_FUNC) &_VARMA_VARMA_MSE, 3},
     {"_VARMA_KLike", (DL_FUNC) &_VARMA_KLike, 5},
     {"_VARMA_DKsmooth", (DL_FUNC) &_VARMA_DKsmooth, 5},
+    {"_VARMA_DKsmoothMF", (DL_FUNC) &_VARMA_DKsmoothMF, 6},
     {NULL, NULL, 0}
 };
 

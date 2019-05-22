@@ -45,3 +45,7 @@ DKsmooth <- function(B, q, H, R, Y) {
     .Call('_VARMA_DKsmooth', PACKAGE = 'VARMA', B, q, H, R, Y)
 }
 
+DKsmoothMF <- function(B, q, H, R, Y, W) {
+    .Call('_VARMA_DKsmoothMF', PACKAGE = 'VARMA', B, q, H, R, Y, W)
+}
+

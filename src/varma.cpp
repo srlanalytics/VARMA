@@ -305,6 +305,145 @@ List DKsmooth(arma::mat B,     // companion form of transition matrix
   return(Out);
 }
 
+// Disturbance smoother. Output is a list.
+// [[Rcpp::export]]
+List DKsmoothMF(arma::mat B,     // companion form of transition matrix
+              arma::mat q,     // covariance matrix of shocks to states
+              arma::mat H,     // measurement equation
+              arma::vec R,     // covariance matrix of shocks to observables; Y are observations
+              arma::mat Y,
+              arma::mat W){    // data
+  
+  
+  // preliminaries
+  uword T  = Y.n_rows; //number of time peridos
+  uword m  = B.n_rows; //number of factors
+  uword p  = B.n_cols/m; //number of lags (must agree with lev/diff structure of data)
+  uword k  = H.n_rows; //number of observables
+  uword sA = m*p; //size of companion matrix A
+  uword sH = H.n_cols;
+  
+  // Helper matrix
+  mat HJ(k,sA, fill::zeros);
+  HJ.cols(0,sH-1) = H;
+  
+  //Making the A matrix
+  sp_mat Bs(B);
+  sp_mat tmp_sp(sA-m,m);
+  tmp_sp = join_horiz(speye<sp_mat>(sA-m,sA-m), tmp_sp);
+  sp_mat A  = join_vert(Bs, tmp_sp);
+  
+  //Making the Q matrix
+  mat qq(sA,sA,fill::zeros);
+  qq(span(0,m-1),span(0,m-1)) = q;
+  sp_mat Q(qq);
+  
+  //Using the long run variance
+  mat P0, P1, S, C;
+  mat XX(eye<mat>(sA*sA, sA*sA) - kron(A,A));
+  mat vQ(reshape(Q, sA*sA, 1));
+  mat tmp_P = solve(XX, vQ);
+  mat Pi(reshape(tmp_P, sA, sA));
+  P0  = Pi; //long run variance
+  P1  = P0;
+  
+  //Declairing variables for the filter
+  field<mat> Kstr(T); //store Kalman gain
+  field<vec> PEstr(T); //store prediction error
+  field<mat> Hstr(T), Sstr(T); //store H and S^-1
+  field<vec> Cmeans;
+  mat VarY, ZP(T+1,sA,fill::zeros), Z(T,sA,fill::zeros), Zs(T,sA,fill::zeros),
+  Lik, K, Si, tmp_mat, Ytmp, Hn;
+  sp_mat Rn;
+  vec PE, Yt, Yn, Wn, Yp;
+  uvec ind, indM;
+  double tmp;
+  double tmpp;
+  Lik << 0;
+  vec Zp(sA, fill::zeros); //initialize to zero, the long run EV
+  
+  mat zippo(1,1,fill::zeros);
+  mat zippo_sA(sA,1);
+  
+  
+  
+  // -------- Filtering --------------------
+  for(uword t=0; t<T; t++) {
+    //Rcpp::Rcout << t << endl;
+    //Using W to for mixed frequency weights
+    Yn = trans(Y.row(t));
+    ind = find_finite(Yn);
+    Yn = Yn(ind);
+    Wn = trans(W.row(t));
+    Wn = Wn(ind);
+    // if nothing is observed
+    if(Yn.is_empty()){
+      Z.row(t) = trans(Zp);
+      P0       = P1;
+      Hstr(t)  = trans(zippo_sA);
+      Sstr(t)  = zippo;
+      PEstr(t) = zippo;
+      Kstr(t)  = zippo_sA;
+    } else{
+      //if variables are observed
+      Hn        = HJ.rows(ind); //rows of HJ corresponding to observations
+      Hstr(t)   = Hn; //Store for smoothing
+      Rn        = diagmat(R(ind)%Wn);  //rows of R corresponding to observations
+      Yp        = Hn*Zp; //prediction step for Y
+      S         = Hn*P1*trans(Hn)+Rn; //variance of Yp
+      S         = symmatu((S+trans(S))/2); //enforce pos. semi. def.
+      Si        = inv_sympd(S); //invert S
+      Sstr(t)   = Si; //sotre Si for smoothing
+      K         = P1*trans(Hn)*Si; //Kalman gain
+      PE        = Yn-Yp; // prediction error
+      PEstr(t)  = PE; //store prediction error
+      Kstr(t)   = K;  //store Kalman gain
+      Z.row(t)  = trans(Zp+K*PE); //updating step for Z
+      P0        = P1-P1*trans(Hn)*Si*Hn*P1; // variance Z(t+1)|Y(1:t+1)
+      P0        = symmatu((P0+trans(P0))/2); //enforce pos semi def
+      log_det(tmp,tmpp,S); //calculate log determinant of S for the likelihood
+      Lik    = -.5*tmp-.5*trans(PE)*Si*PE+Lik; //calculate log likelihood
+    }
+    // Prediction for next period
+    Zp  = A*trans(Z.row(t)); //prediction for Z(t+1) +itcZ
+    ZP.row(t+1) = trans(Zp);
+    P1     = A*P0*trans(A)+Q; //variance Z(t+1)|Y(1:t)
+    P1     = symmatu((P1+trans(P1))/2); //enforce pos semi def
+  }
+  ZP.shed_row(T);
+  
+  //Smoothing following Durbin Koopman 2001/2012
+  mat r(T+1,sA,fill::zeros);
+  mat L;
+  
+  //r is 1 indexed while all other variables are zero indexed
+  for(uword t=T; t>0; t--) {
+    L     = (A-A*Kstr(t-1)*Hstr(t-1));
+    r.row(t-1) = trans(PEstr(t-1))*Sstr(t-1)*Hstr(t-1) + r.row(t)*L;
+    // Rcpp::Rcout << t << endl;
+  }
+  
+  Zs.row(0)   = r.row(0)*Pi;
+  
+  //Forward again
+  for(uword t = 0; t<T-1; t++){
+    Zs.row(t+1)   = Zs.row(t)*trans(A) + r.row(t+1)*Q; //smoothed values of Z
+  }
+  
+  mat Ys = Zs.cols(0,sH-1)*trans(H); //fitted values of Y
+  
+  List Out;
+  Out["Ys"]   = Ys;
+  Out["Lik"]  = Lik;
+  // Out["Zz"]   = Z;
+  Out["Z"]    = Zs;
+  Out["Zp"]   = ZP;
+  Out["Kstr"] = Kstr;
+  Out["PEstr"]= PEstr;
+  Out["A"] = A;
+  
+  return(Out);
+}
 
 // // [[Rcpp::export]]
 // List VARMA(arma::mat Y, //multivariate input data
