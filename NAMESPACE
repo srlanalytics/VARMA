@@ -1,0 +1,11 @@
+
+export(VARMA_est)
+export(VARMA_MSE)
+export(VARMA_select)
+export(VARMA_SS)
+export(breg)
+importFrom(Rcpp,evalCpp)
+importFrom(stats,na.exclude)
+importFrom(stats,optim)
+importFrom(stats,var)
+useDynLib(VARMA)

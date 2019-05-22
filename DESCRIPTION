@@ -1,0 +1,22 @@
+Package: VARMA
+Type: Package
+Title: Vector Auto Regression Moving Average
+Version: 0.0.1
+Date: 2019-04-06
+Authors@R: person("Seth", "Leonard", email = "seth@srlanalytics.com", role = c("aut", "cre"))
+Description: Bare bones VARMA estimation accepting missing data
+BugReports: https://github.com/srlanalytics/VARMA
+License: MIT + file LICENSE
+Imports:
+  Rcpp (>= 0.12.13),
+  RcppArmadillo (>= 0.7.900.2.0),
+Suggests:
+  testthat,
+  tsbox,
+  knitr,
+  rmarkdown
+LinkingTo: Rcpp, RcppArmadillo
+RoxygenNote: 6.1.1
+LazyData: true
+Encoding: UTF-8
+VignetteBuilder: knitr
