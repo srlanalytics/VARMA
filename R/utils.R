@@ -17,28 +17,3 @@ expand_mat <- function(a){
   return(A)
 }
 
-breg <- function(X,Y, Int = TRUE, Bp = NULL, lam = 0, nu = NULL, reps = 2000, burn = 1000, diag = TRUE){
-  
-  k <- NCOL(X)
-  m <- NCOL(Y)
-  
-  if(is.null(Bp)){
-    Bp <- matrix(0,m,k)
-  }
-  if(is.null(nu)){
-    if(diag){
-      nu = rep(0,m)
-    }else{
-      nu = 0
-    }
-  }
-  
-  if(diag){
-    est <- BReg_diag(X, Y, Int, Bp, lam, nu, reps, burn)
-  }else{
-    est <- BReg(X, Y, Int, Bp, lam, nu, reps, burn)
-  }
-  
-  return(est)
-  
-}

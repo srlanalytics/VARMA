@@ -6,7 +6,7 @@ using namespace arma;
 using namespace Rcpp;
 List BReg(arma::mat X, arma::mat Y, bool Int, arma::mat Bp, double lam, double nu,
           arma::uword reps = 1000, arma::uword burn = 1000);
-List BReg_diag(arma::mat X,  arma::mat Y, bool Int, arma::mat Bp, double lam, arma::vec nu,
+List BReg_diag(arma::mat X,  arma::mat Y, bool Int, arma::mat Bp, arma::vec lam, arma::vec Y_lam, arma::vec nu,
                arma::uword reps = 1000, arma::uword burn = 1000); 
 arma::sp_mat MakeSparse(arma::mat A);
 arma::sp_mat sp_rows(arma::sp_mat A, arma::uvec r);

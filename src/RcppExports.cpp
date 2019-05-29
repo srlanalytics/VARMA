@@ -6,80 +6,6 @@
 
 using namespace Rcpp;
 
-// mvrnrm
-arma::mat mvrnrm(int n, arma::vec mu, arma::mat Sigma);
-RcppExport SEXP _VARMA_mvrnrm(SEXP nSEXP, SEXP muSEXP, SEXP SigmaSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< int >::type n(nSEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type mu(muSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Sigma(SigmaSEXP);
-    rcpp_result_gen = Rcpp::wrap(mvrnrm(n, mu, Sigma));
-    return rcpp_result_gen;
-END_RCPP
-}
-// rinvwish
-arma::cube rinvwish(int n, int v, arma::mat S);
-RcppExport SEXP _VARMA_rinvwish(SEXP nSEXP, SEXP vSEXP, SEXP SSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< int >::type n(nSEXP);
-    Rcpp::traits::input_parameter< int >::type v(vSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type S(SSEXP);
-    rcpp_result_gen = Rcpp::wrap(rinvwish(n, v, S));
-    return rcpp_result_gen;
-END_RCPP
-}
-// invchisq
-double invchisq(double nu, double scale);
-RcppExport SEXP _VARMA_invchisq(SEXP nuSEXP, SEXP scaleSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< double >::type nu(nuSEXP);
-    Rcpp::traits::input_parameter< double >::type scale(scaleSEXP);
-    rcpp_result_gen = Rcpp::wrap(invchisq(nu, scale));
-    return rcpp_result_gen;
-END_RCPP
-}
-// BReg
-List BReg(arma::mat X, arma::mat Y, bool Int, arma::mat Bp, double lam, double nu, arma::uword reps, arma::uword burn);
-RcppExport SEXP _VARMA_BReg(SEXP XSEXP, SEXP YSEXP, SEXP IntSEXP, SEXP BpSEXP, SEXP lamSEXP, SEXP nuSEXP, SEXP repsSEXP, SEXP burnSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::mat >::type X(XSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Y(YSEXP);
-    Rcpp::traits::input_parameter< bool >::type Int(IntSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Bp(BpSEXP);
-    Rcpp::traits::input_parameter< double >::type lam(lamSEXP);
-    Rcpp::traits::input_parameter< double >::type nu(nuSEXP);
-    Rcpp::traits::input_parameter< arma::uword >::type reps(repsSEXP);
-    Rcpp::traits::input_parameter< arma::uword >::type burn(burnSEXP);
-    rcpp_result_gen = Rcpp::wrap(BReg(X, Y, Int, Bp, lam, nu, reps, burn));
-    return rcpp_result_gen;
-END_RCPP
-}
-// BReg_diag
-List BReg_diag(arma::mat X, arma::mat Y, bool Int, arma::mat Bp, double lam, arma::vec nu, arma::uword reps, arma::uword burn);
-RcppExport SEXP _VARMA_BReg_diag(SEXP XSEXP, SEXP YSEXP, SEXP IntSEXP, SEXP BpSEXP, SEXP lamSEXP, SEXP nuSEXP, SEXP repsSEXP, SEXP burnSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::mat >::type X(XSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Y(YSEXP);
-    Rcpp::traits::input_parameter< bool >::type Int(IntSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Bp(BpSEXP);
-    Rcpp::traits::input_parameter< double >::type lam(lamSEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type nu(nuSEXP);
-    Rcpp::traits::input_parameter< arma::uword >::type reps(repsSEXP);
-    Rcpp::traits::input_parameter< arma::uword >::type burn(burnSEXP);
-    rcpp_result_gen = Rcpp::wrap(BReg_diag(X, Y, Int, Bp, lam, nu, reps, burn));
-    return rcpp_result_gen;
-END_RCPP
-}
 // comp_form
 arma::mat comp_form(arma::mat B);
 RcppExport SEXP _VARMA_comp_form(SEXP BSEXP) {
@@ -177,11 +103,6 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_VARMA_mvrnrm", (DL_FUNC) &_VARMA_mvrnrm, 3},
-    {"_VARMA_rinvwish", (DL_FUNC) &_VARMA_rinvwish, 3},
-    {"_VARMA_invchisq", (DL_FUNC) &_VARMA_invchisq, 2},
-    {"_VARMA_BReg", (DL_FUNC) &_VARMA_BReg, 8},
-    {"_VARMA_BReg_diag", (DL_FUNC) &_VARMA_BReg_diag, 8},
     {"_VARMA_comp_form", (DL_FUNC) &_VARMA_comp_form, 1},
     {"_VARMA_stack_obs", (DL_FUNC) &_VARMA_stack_obs, 3},
     {"_VARMA_advance_vec", (DL_FUNC) &_VARMA_advance_vec, 2},

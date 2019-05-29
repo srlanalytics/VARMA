@@ -29,7 +29,7 @@ VARMA_loss <- function(x, data, order, shrink_P = 0, shrink_Q = 0){
     P  <- matrix(x[1:idx], m, m*order[1])
     eg <- eigen(comp_form(P))
     if(any(abs(eg$values)>1)){
-      return(Inf)
+      return(1e10)
     }
   }else{
     P <- matrix(0,m,0)
@@ -121,7 +121,7 @@ VARMA_est <- function(data, order, shrink_P = 0, shrink_Q = 0, P_in = NULL, Q_in
   
   if(length(x)==1){
     parameters <- optim(par = x, fn = VARMA_loss, data = data, order = order, 
-                        shrink_P = shrink_P, shrink_Q = shrink_Q, method = "Brent", lower = -10, upper = 10)
+                        shrink_P = shrink_P, shrink_Q = shrink_Q, method = "Brent", lower = -1, upper = 1)
   }else{
     parameters <- optim(par = x, fn = VARMA_loss, data = data, order = order, 
                         shrink_P = shrink_P, shrink_Q = shrink_Q, method = method)
@@ -236,6 +236,77 @@ VARMA_select <- function(data, shrink_P = 0, shrink_Q = 0){
                 MSE = est$MSE)
     
 }
+
+
+VARMA_select_multi <- function(data, models = 3, shrink_P = 0, shrink_Q = 0){
+  
+  m <- NCOL(data)
+  n_obs <- sum(is.finite(data))
+  pen <- 0.1
+  scores <- matrix(0,8,8)
+  
+  estAR <- VARMA_est(data, c(1,0), shrink_P = shrink_P, shrink_Q = shrink_Q)
+  ucv <- sum(data^2, na.rm = TRUE)
+  SICar <- (ucv/n_obs-estAR$MSE)/(ucv/n_obs) - (pen*m^2)/sqrt(n_obs)  #Seth's bogus information criteria
+  #BICar <- log(n_obs) * (2*m^2) - 2 * estAR$lik
+  
+  estMA <- VARMA_est(data, c(0,1), shrink_P = shrink_P, shrink_Q = shrink_Q)
+  SICma <- (ucv/n_obs-estMA$MSE)/(ucv/n_obs) - (pen*m^2)/sqrt(n_obs)  #Seth's bogus information criteria
+  
+  scores[2,1] <- SICar
+  scores[1,2] <- SICma
+  
+  if(SICar>SICma){
+    order <- c(1,0)
+    SIC <- SICar
+    est <- estAR
+  }else{
+    order <- c(0,1)
+    SIC <- SICma
+    est <- estMA
+  }
+  
+  count <- 0
+  it <- 0
+  while(count < models && it < 8){
+    orderAR <- order + c(1,0)
+    orderMA <- order + c(0,1)
+    
+    estAR <- VARMA_est(data, orderAR, shrink_P = shrink_P, shrink_Q = shrink_Q)
+    SICar <- (ucv/n_obs-estAR$MSE)/(ucv/n_obs) - (pen*sum(orderAR)*m^2)/sqrt(n_obs)
+    
+    estMA <- VARMA_est(data, orderMA, shrink_P = shrink_P, shrink_Q = shrink_Q)
+    SICma <- (ucv/n_obs-estMA$MSE)/(ucv/n_obs) - (pen*sum(orderMA)*m^2)/sqrt(n_obs)  #Seth's bogus information criteria
+    
+    scores[orderAR[1]+1, orderAR[2]+1] <- SICar
+    scores[orderMA[1]+1, orderMA[2]+1] <- SICma
+    
+    if(max(scores) > max(SICar,SICma)){
+      count <- count+1
+    }
+    
+    if(SICar>SICma){
+      order <- orderAR
+      SIC <- SICar
+      est <- estAR
+    }else{
+      order <- orderMA
+      SIC <- SICma
+      est <- estMA
+    }
+    it = it+1
+  }
+  
+  
+  return(scores)
+  
+  # Out <- list(order = order,
+  #             P = est$P,
+  #             Q = est$Q,
+  #             MSE = est$MSE)
+  
+}
+
 
 VARMA_SS <- function(data, P, Q){
   
