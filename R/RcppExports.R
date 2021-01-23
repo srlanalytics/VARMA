@@ -13,19 +13,15 @@ advance_vec <- function(e, E) {
     .Call('_VARMA_advance_vec', PACKAGE = 'VARMA', e, E)
 }
 
+long_run_var <- function(A, Q, m, p) {
+    .Call('_VARMA_long_run_var', PACKAGE = 'VARMA', A, Q, m, p)
+}
+
 VARMA_MSE <- function(B, Q, Y) {
     .Call('_VARMA_VARMA_MSE', PACKAGE = 'VARMA', B, Q, Y)
 }
 
-KLike <- function(B, q, H, R, Y) {
-    .Call('_VARMA_KLike', PACKAGE = 'VARMA', B, q, H, R, Y)
-}
-
-DKsmooth <- function(B, q, H, R, Y) {
-    .Call('_VARMA_DKsmooth', PACKAGE = 'VARMA', B, q, H, R, Y)
-}
-
-DKsmoothMF <- function(B, q, H, R, Y, W) {
-    .Call('_VARMA_DKsmoothMF', PACKAGE = 'VARMA', B, q, H, R, Y, W)
+Kfilter <- function(Y, B, q, H, R) {
+    .Call('_VARMA_Kfilter', PACKAGE = 'VARMA', Y, B, q, H, R)
 }
 

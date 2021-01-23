@@ -5,361 +5,59 @@ using namespace arma;
 using namespace Rcpp;
 
 
-// // [[Rcpp::export]]
-// arma::mat mvrnrm(int n, arma::vec mu, arma::mat Sigma){
-//   /*-------------------------------------------------------
-// # Generate draws from a multivariate normal distribution
-// #--------------------------------------------------------
-// #  n        number of samples
-// #  mu       mean vector
-// #  Sigma    covariance matrix
-// #-------------------------------------------------------*/
-//    RNGScope scope;
-//   int p = Sigma.n_cols;
-//   mat X = reshape(vec(rnorm(p * n)), p, n);
-//   vec eigval;
-//   mat eigvec;
-//   eig_sym(eigval, eigvec, Sigma);
-//   X = eigvec * diagmat(sqrt(eigval)) * X;
-//   X.each_col() += mu;
-//   return(X);
+// arma::sp_mat MakeSparse(arma::mat A){
+//   uword n_rows   = A.n_rows;
+//   uword n_cols   = A.n_cols;
+//   uvec ind       = find(A);
+//   umat locations = ind2sub(size(A),ind);
+//   vec  values    = A(ind);
+//   sp_mat C(locations,values,n_rows,n_cols);
+//   return(C);
 // }
 // 
-// /*-------------------------------------------------------
-// # Generate Draws from an Inverse Wishart Distribution
-// # via the Bartlett Decomposition
-// #--------------------------------------------------------
-// # NOTE: output is identical to riwish from MCMCpack
-// #       provided the same random seed is used
-// #--------------------------------------------------------
-// #   n     number of samples
-// #   S     scale matrix
-// #   v     degrees of freedom
-// #-------------------------------------------------------*/
-//  // [[Rcpp::export]]
-//  arma::cube rinvwish(int n, int v, arma::mat S){
-//    RNGScope scope;
-//    int p = S.n_rows;
-//    mat L = chol(inv_sympd(S), "lower");
-//    cube sims(p, p, n, fill::zeros);
-//    for(int j = 0; j < n; j++){
-//      mat A(p,p, fill::zeros);
-//      for(int i = 0; i < p; i++){
-//        int df = v - (i + 1) + 1; //zero-indexing
-//        A(i,i) = sqrt(R::rchisq(df));
-//      }
-//      for(int row = 1; row < p; row++){
-//        for(int col = 0; col < row; col++){
-//          A(row, col) = R::rnorm(0,1);
-//        }
-//      }
-//      mat LA_inv = inv(trimatl(trimatl(L) * trimatl(A)));
-//      sims.slice(j) = LA_inv.t() * LA_inv;
-//    }
-//    return(sims);
-//  }
+// arma::sp_mat sp_rows(arma::sp_mat A,
+//                      arma::uvec r   ){
+//   uword n_rows   = A.n_rows;
+//   //  uword n_cols   = A.n_cols;
+//   uword n_r      = r.size();
+//   uvec  tmp      = regspace<uvec>(0,n_rows-1);
+//   tmp      = tmp.elem(r);
+//   umat  location = join_vert(trans(regspace<uvec>(0,n_r-1)),trans(tmp));
+//   sp_mat J(location,ones<vec>(n_r),n_r,n_rows);
+//   sp_mat C       = J*A;
+//   return(C);
+// }
 // 
-// // [[Rcpp::export]]
-// double invchisq(double nu, double scale){
-//   /*-------------------------------------------------------
-// # Generate draws from a scaled inverse chi squared distribution
-// #--------------------------------------------------------
-// #  nu       "degrees of freedom"
-// #  scale    scale parameter
-// #-------------------------------------------------------*/
-//    vec    x = randn<vec>(nu)/sqrt(scale);
-//   double s = 1/sum(square(x));
-//   return(s);
+// arma::sp_mat sp_cols(arma::sp_mat A,
+//                      arma::uvec r   ){
+//   //  uword n_rows   = A.n_rows;
+//   uword n_cols   = A.n_cols;
+//   uword n_r      = r.size();
+//   uvec  tmp      = regspace<uvec>(0,n_cols-1);
+//   tmp            = tmp.elem(r);
+//   umat  location = join_vert(trans(tmp),trans(regspace<uvec>(0,n_r-1)));
+//   sp_mat J(location,ones<vec>(n_r),n_cols,n_r);
+//   sp_mat C       = A*J;
+//   return(C);
 // }
 // 
 // 
-// //Bayesian linear regression --- does NOT accept missing variables
-// // [[Rcpp::export]]
-// List BReg(arma::mat X,   // RHS variables
-//           arma::mat Y,   // LHS variables
-//           bool Int,      // Estimate intercept term?
-//           arma::mat Bp,  // prior for B
-//           double lam,    // prior tightness
-//           double nu,     //prior "deg of freedom"
-//           arma::uword reps = 1000,
-//           arma::uword burn = 1000){
-//   
-//   uword k    = Y.n_cols;
-//   uword m    = X.n_cols;
-//   uword T    = Y.n_rows;
-//   mat Lam    = lam*eye<mat>(m,m);
-//   mat tmp;
-//   
-//   if(Int){ //if we should estimate an intercept term
-//     m        = m+1;
-//     Lam      = lam*eye<mat>(m,m);
-//     Lam(0,0) = 0;
-//     tmp      = zeros<mat>(k,1);
-//     Bp       = join_horiz(tmp, Bp);
-//     tmp      = ones<mat>(T,1);
-//     X        = join_horiz(tmp,X);
+// //Replace row r of sparse matrix A with the (sparse) vector a.
+// //Should be reasonably fast with Armadillo 8 or newer
+// arma::sp_mat sprow(arma::sp_mat A,
+//                    arma::mat a,
+//                    arma::uword r   ){
+//   //This intitally used find(a) to inentify non-zero elements of a, but that
+//   //did not replace elements that are non-zero in A and zero in a
+//   uword n_cols     = A.n_cols;
+//   if(n_cols>a.n_elem){
+//     a = join_horiz(a, zeros<mat>(1,n_cols-a.n_elem));
 //   }
-//   
-//   //declairing variables
-//   cube Bstore(k,m,reps), Qstore(k,k,reps);
-//   mat v_1, V_1, Mu, B, Beta, scale, q;
-//   vec mu;
-//   
-//   //Burn Loop
-//   
-//   for(uword rep = 0; rep<burn; rep++){
-//     
-//     Rcpp::checkUserInterrupt();
-//     
-//     v_1   = trans(X)*X+Lam;
-//     v_1   = (trans(v_1)+v_1)/2;
-//     v_1   = inv_sympd(v_1);
-//     Mu    = v_1*(trans(X)*Y+Lam*trans(Bp));
-//     scale = eye(k,k)+trans(Y-X*Mu)*(Y-X*Mu)+trans(Mu-trans(Bp))*Lam*(Mu-trans(Bp)); // eye(k) is the prior scale parameter for the IW distribution and eye(k)+junk the posterior.
-//     scale = (scale+trans(scale))/2;
-//     q     = rinvwish(1,nu+T,scale); // Draw for q
-//     mu    = vectorise(trans(Mu));   // vectorized posterior mean for beta
-//     V_1   = kron(v_1,q);            // covariance of vectorized parameters beta
-//     Beta  = mvrnrm(1,mu,V_1);       //Draw for B
-//     B     = reshape(Beta,k,m);      //recovering original dimensions
+//   for(uword n      = 0; n < n_cols; n++){
+//     A(r,n)         = a(n);
 //   }
-//   
-//   //Sampling Loop
-//   
-//   for(uword rep = 0; rep<reps; rep++){
-//     
-//     Rcpp::checkUserInterrupt();
-//     
-//     v_1   = trans(X)*X+Lam;
-//     v_1   = (trans(v_1)+v_1)/2;
-//     v_1   = inv_sympd(v_1);
-//     Mu    = v_1*(trans(X)*Y+Lam*trans(Bp));
-//     scale = eye(k,k)+trans(Y-X*Mu)*(Y-X*Mu)+trans(Mu-trans(Bp))*Lam*(Mu-trans(Bp)); // eye(k) is the prior scale parameter for the IW distribution and eye(k)+junk the posterior.
-//     scale = (scale+trans(scale))/2;
-//     q     = rinvwish(1,nu+T,scale); // Draw for q
-//     mu    = vectorise(trans(Mu));   // vectorized posterior mean for beta
-//     V_1   = kron(v_1,q);            // covariance of vectorized parameters beta
-//     Beta  = mvrnrm(1,mu,V_1);       //Draw for B
-//     B     = reshape(Beta,k,m);      //recovering original dimensions
-//     Qstore.slice(rep) = q;
-//     Bstore.slice(rep) = B;
-//   }
-//   
-//   //For B
-//   for(uword rw=0;rw<k;rw++){
-//     for(uword cl=0;cl<m;cl++){
-//       B(rw,cl) = as_scalar(median(vectorise(Bstore.tube(rw,cl))));
-//     }
-//   }
-//   //For q
-//   for(uword rw=0;rw<k;rw++){
-//     for(uword cl=0;cl<k;cl++){
-//       q(rw,cl) = as_scalar(median(vectorise(Qstore.tube(rw,cl))));
-//     }
-//   }
-//   
-//   List Out;
-//   Out["B"]   = B;
-//   Out["q"]   = q;
-//   Out["Bstore"]   = Bstore;
-//   Out["Qstore"]   = Qstore;
-//   
-//   return(Out);
-//   
+//   return(A);
 // }
-// 
-// //Bayesian linear regression with diagonal covariance to shocks. Accepts missing obs.
-// // [[Rcpp::export]]
-// List BReg_diag(arma::mat X,   // RHS variables
-//                arma::mat Y,   // LHS variables
-//                bool Int,      //Estimate intercept terms?
-//                arma::mat Bp,  // prior for B
-//                arma::vec lam,    // prior tightness
-//                arma::vec nu,  //prior "deg of freedom"
-//                arma::uword reps = 1000, //MCMC sampling iterations
-//                arma::uword burn = 1000){ //MCMC burn in iterations
-//   
-//   uword k    = Y.n_cols;
-//   uword m    = X.n_cols;
-//   uword T    = Y.n_rows;
-//   vec Y_lam;
-//   if(lam.n_elem == 1){
-//     lam = lam(0)*ones<vec>(m);
-//     Y_lam = ones<vec>(k);
-//   }else if(lam.n_elem == k){
-//     Y_lam = lam;
-//     lam = ones<vec>(m);
-//   }else if(!lam.n_elem == m){
-//     Rcpp::stop("prior tightness lambda is not an allowed size");
-//   }
-//   if(nu.n_elem == 1){
-//     nu = nu(0)*ones<vec>(k);
-//   }
-//   mat tmp, Lam;
-//   
-//   if(Int){ //if we should estimate an intercept term
-//     m        = m+1;
-//     lam      = join_vert(zeros<vec>(1), lam);
-//     Lam      = diagmat(lam);
-//     tmp      = zeros<mat>(k,1);
-//     Bp       = join_horiz(tmp, Bp);
-//     tmp      = ones<mat>(T,1);
-//     X        = join_horiz(tmp,X);
-//   }else{
-//     Lam    = diagmat(lam);
-//   }
-//   
-//   //declairing variables
-//   cube Bstore(k,m,reps);
-//   mat v_1, Beta, Qstore(k,reps), xx, LamJ;
-//   vec mu, q(k,fill::zeros);
-//   double scl;
-//   uvec ind_rm, ind;
-//   vec y, x;
-//   mat B(k, m, fill::zeros);
-//   uvec indX = find_nonfinite(X.col(0));
-//   if(m>1){
-//     for(uword j = 1; j<m; j++){
-//       x = X.col(j);
-//       indX = unique( join_cols(indX, find_nonfinite(x))); //index of missing X values
-//     }
-//   }
-//   
-//   //Burn Loop
-//   
-//   for(uword rep = 0; rep<burn; rep++){
-//     Rcpp::checkUserInterrupt();
-//     
-//     for(uword j=0; j<k; j++){
-//       y       = Y.col(j);
-//       ind     = unique(join_cols(indX,find_nonfinite(y))); //index of elements to remove
-//       xx      = X;
-//       LamJ    = Lam*Y_lam(j);
-//       //this seems a tedious way to shed non-contiguous indexes
-//       for(uword n = ind.n_elem; n>0; n--){
-//         xx.shed_row(ind(n-1));
-//         y.shed_row(ind(n-1));
-//       }
-//       v_1   = trans(xx)*xx+LamJ;
-//       v_1   = (trans(v_1)+v_1)/2;
-//       v_1   = inv_sympd(v_1);
-//       mu    = v_1*(trans(xx)*y+LamJ*trans(Bp.row(j)));
-//       scl   = as_scalar(trans(y-xx*mu)*(y-xx*mu)+trans(mu-trans(Bp.row(j)))*LamJ*(mu-trans(Bp.row(j)))); // prior variance is zero... a little odd but it works
-//       q(j)  = invchisq(nu(j)+y.n_rows,scl); //Draw for r
-//       Beta  = mvrnrm(1, mu, v_1*q(j));
-//       B.row(j) = trans(Beta.col(0));
-//     }
-//     
-//   }
-//   
-//   // Sampling loop
-//   
-//   for(uword rep = 0; rep<reps; rep++){
-//     
-//     Rcpp::checkUserInterrupt();
-//     
-//     for(uword j=0; j<k; j++){
-//       y       = Y.col(j);
-//       ind     = unique(join_cols(indX,find_nonfinite(y))); //index of elements to remove
-//       xx      = X;
-//       LamJ    = Lam*Y_lam(j);
-//       //this seems a tedious way to shed non-contiguous indexes
-//       for(uword n = ind.n_elem; n>0; n--){
-//         xx.shed_row(ind(n-1));
-//         y.shed_row(ind(n-1));
-//       }
-//       v_1   = trans(xx)*xx+LamJ*Y_lam(j);
-//       v_1   = (trans(v_1)+v_1)/2;
-//       v_1   = inv_sympd(v_1);
-//       mu    = v_1*(trans(xx)*y+LamJ*trans(Bp.row(j)));
-//       scl   = as_scalar(trans(y-xx*mu)*(y-xx*mu)+trans(mu-trans(Bp.row(j)))*LamJ*(mu-trans(Bp.row(j)))); // prior variance is zero... a little odd but it works
-//       q(j)  = invchisq(nu(j)+y.n_rows,scl); //Draw for r
-//       Beta  = mvrnrm(1, mu, v_1*q(j));
-//       B.row(j) = trans(Beta.col(0));
-//     }
-//     Qstore.col(rep)   = q;
-//     Bstore.slice(rep) = B;
-//     
-//   }
-//   
-//   
-//   //For B
-//   for(uword rw=0;rw<k;rw++){
-//     for(uword cl=0;cl<m;cl++){
-//       B(rw,cl) = as_scalar(median(vectorise(Bstore.tube(rw,cl))));
-//     }
-//   }
-//   //For q
-//   
-//   for(uword rw=0;rw<k;rw++){
-//     q(rw) = as_scalar(median(Qstore.row(rw)));
-//   }
-//   
-//   
-//   List Out;
-//   Out["B"]   = B;
-//   Out["q"]   = q;
-//   Out["Bstore"]   = Bstore;
-//   Out["Qstore"]   = Qstore;
-//   
-//   return(Out);
-// }
-
-
-  
-arma::sp_mat MakeSparse(arma::mat A){
-  uword n_rows   = A.n_rows;
-  uword n_cols   = A.n_cols;
-  uvec ind       = find(A);
-  umat locations = ind2sub(size(A),ind);
-  vec  values    = A(ind);
-  sp_mat C(locations,values,n_rows,n_cols);
-  return(C);
-}
-
-arma::sp_mat sp_rows(arma::sp_mat A,
-                     arma::uvec r   ){
-  uword n_rows   = A.n_rows;
-  //  uword n_cols   = A.n_cols;
-  uword n_r      = r.size();
-  uvec  tmp      = regspace<uvec>(0,n_rows-1);
-  tmp      = tmp.elem(r);
-  umat  location = join_vert(trans(regspace<uvec>(0,n_r-1)),trans(tmp));
-  sp_mat J(location,ones<vec>(n_r),n_r,n_rows);
-  sp_mat C       = J*A;
-  return(C);
-}
-
-arma::sp_mat sp_cols(arma::sp_mat A,
-                     arma::uvec r   ){
-  //  uword n_rows   = A.n_rows;
-  uword n_cols   = A.n_cols;
-  uword n_r      = r.size();
-  uvec  tmp      = regspace<uvec>(0,n_cols-1);
-  tmp            = tmp.elem(r);
-  umat  location = join_vert(trans(tmp),trans(regspace<uvec>(0,n_r-1)));
-  sp_mat J(location,ones<vec>(n_r),n_cols,n_r);
-  sp_mat C       = A*J;
-  return(C);
-}
-
-
-//Replace row r of sparse matrix A with the (sparse) vector a.
-//Should be reasonably fast with Armadillo 8 or newer
-arma::sp_mat sprow(arma::sp_mat A,
-                   arma::mat a,
-                   arma::uword r   ){
-  //This intitally used find(a) to inentify non-zero elements of a, but that
-  //did not replace elements that are non-zero in A and zero in a
-  uword n_cols     = A.n_cols;
-  if(n_cols>a.n_elem){
-    a = join_horiz(a, zeros<mat>(1,n_cols-a.n_elem));
-  }
-  for(uword n      = 0; n < n_cols; n++){
-    A(r,n)         = a(n);
-  }
-  return(A);
-}
 
 //Create the companion form of the transition matrix B
 // [[Rcpp::export]]
@@ -402,6 +100,34 @@ arma::vec advance_vec(arma::vec e, arma::vec E){
     out(span(m,s-1)) = E(span(0,s-m-1));
   }
   return(out);
+}
+
+// Getting the long run variance to initiate the filter
+// [[Rcpp::export]]
+arma::mat long_run_var(arma::sp_mat A,
+                       arma::sp_mat Q,
+                       arma::uword m,
+                       arma::uword p){
+  uword sA = A.n_cols;
+  uword pp = sA/m;
+  uword mp = m*p;
+  double mp2 = mp*mp;
+  mat B(A(span(0,mp-1), span(0,mp-1))); mat BB; mat b;
+  mat XX(eye<mat>(mp2, mp2) - kron(B,B));
+  vec vQ(reshape(Q(span(0,m*p-1),span(0,m*p-1)), mp2, 1));
+  mat P(reshape(solve(XX, vQ), mp, mp));
+  //P = P(span(0,m-1),span(0,m-1));
+  mat PP(sA,sA,fill::zeros);
+  for(uword j = 0; j<pp; j++){
+    BB = B;
+    for(uword k=j+1; k<pp; k++){
+      b = BB*P;
+      PP(span(m*j,m*j+m-1), span(m*k,m*k+m-1)) = b(span(0,m-1),span(0,m-1));
+      BB = B*BB;
+    }
+  }
+  PP = PP + trans(PP) + kron(eye<mat>(pp,pp), P(span(0,m-1), span(0,m-1)));
+  return(PP);
 }
 
 // // [[Rcpp::export]]

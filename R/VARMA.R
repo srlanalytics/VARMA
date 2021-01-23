@@ -1,23 +1,3 @@
-# library(bdfm)
-# data <- econ_us[,c(3,9)]
-# data[,2] <- c(NA, diff(log(data[,2])))
-# data <- scale(data[-1,])
-# ts.plot(data, col = c("red", "blue"))
-
-# P <- matrix(c(-.3, .2, .2, .1, 
-#               .3, .3, .2, .1), 2, 4, byrow = T)
-# 
-# Q <- matrix(c(.2, .2, .2, .1, 
-#               .3, .1, .2, .1), 2, 4, byrow = T)
-
-# E <- diag(1,2,2)
-# 
-# order <- c(2,2)
-# 
-# x <- c(P,Q,E[upper.tri(E, diag = TRUE)])
-
-# x <- c(P,Q)
-
 
 VARMA_loss <- function(x, data, order, shrink_P = 0, shrink_Q = 0){
   
@@ -39,8 +19,6 @@ VARMA_loss <- function(x, data, order, shrink_P = 0, shrink_Q = 0){
   }else{
     Q <- matrix(0,m,0)
   }
-  
-  
   
   MSE <- VARMA_MSE(P,Q,Y = data)
   
@@ -307,11 +285,14 @@ VARMA_select_multi <- function(data, models = 3, shrink_P = 0, shrink_Q = 0){
   
 }
 
-
-VARMA_SS <- function(data, P, Q){
+VARMA_SS <- function(data, P, Q, Sig = NULL){
   
-  est_basic <- VARMA_MSE(P,Q,data) 
-  E <- var((data - est_basic$YP), use = "pairwise.complete.obs")
+  if(is.null(Sig)){
+    est_basic <- VARMA_MSE(P,Q,data) 
+    E <- var((data - est_basic$YP), use = "complete.obs")
+  }else{
+    E <- Sig
+  }
   
   m <- NCOL(data)
   sP <- NCOL(P)
@@ -326,11 +307,12 @@ VARMA_SS <- function(data, P, Q){
     H[,(m+1):(sQ+m)] <- Q
   }
   
-  SS <- DKsmooth(B,E,H,R = rep(0,m),Y = data)
+  SS <- Kfilter(Y = t(data), B,E,H,R = rep(0,m))
   
-  Out <- list(Ys = SS$Ys,
-              Z  = SS$Z,
-              Lik = SS$Lik,
+  Out <- list(Lik = SS$Lik,
+              Yfit = t(SS$Yfit),
+              var = SS$var,
+              Z  = t(SS$Z),
               B = B,
               E = E,
               H = H)

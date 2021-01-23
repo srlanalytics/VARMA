@@ -42,8 +42,22 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// long_run_var
+arma::mat long_run_var(arma::sp_mat A, arma::sp_mat Q, arma::uword m, arma::uword p);
+RcppExport SEXP _VARMA_long_run_var(SEXP ASEXP, SEXP QSEXP, SEXP mSEXP, SEXP pSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::sp_mat >::type A(ASEXP);
+    Rcpp::traits::input_parameter< arma::sp_mat >::type Q(QSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type m(mSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type p(pSEXP);
+    rcpp_result_gen = Rcpp::wrap(long_run_var(A, Q, m, p));
+    return rcpp_result_gen;
+END_RCPP
+}
 // VARMA_MSE
-List VARMA_MSE(arma::mat B, arma::mat Q, arma::mat Y);
+Rcpp::List VARMA_MSE(arma::mat B, arma::mat Q, arma::mat Y);
 RcppExport SEXP _VARMA_VARMA_MSE(SEXP BSEXP, SEXP QSEXP, SEXP YSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -55,49 +69,18 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// KLike
-double KLike(arma::mat B, arma::mat q, arma::mat H, arma::vec R, arma::mat Y);
-RcppExport SEXP _VARMA_KLike(SEXP BSEXP, SEXP qSEXP, SEXP HSEXP, SEXP RSEXP, SEXP YSEXP) {
+// Kfilter
+Rcpp::List Kfilter(arma::mat Y, arma::mat B, arma::mat q, arma::mat H, arma::vec R);
+RcppExport SEXP _VARMA_Kfilter(SEXP YSEXP, SEXP BSEXP, SEXP qSEXP, SEXP HSEXP, SEXP RSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::mat >::type Y(YSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type B(BSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type q(qSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type H(HSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type R(RSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Y(YSEXP);
-    rcpp_result_gen = Rcpp::wrap(KLike(B, q, H, R, Y));
-    return rcpp_result_gen;
-END_RCPP
-}
-// DKsmooth
-List DKsmooth(arma::mat B, arma::mat q, arma::mat H, arma::vec R, arma::mat Y);
-RcppExport SEXP _VARMA_DKsmooth(SEXP BSEXP, SEXP qSEXP, SEXP HSEXP, SEXP RSEXP, SEXP YSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::mat >::type B(BSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type q(qSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type H(HSEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type R(RSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Y(YSEXP);
-    rcpp_result_gen = Rcpp::wrap(DKsmooth(B, q, H, R, Y));
-    return rcpp_result_gen;
-END_RCPP
-}
-// DKsmoothMF
-List DKsmoothMF(arma::mat B, arma::mat q, arma::mat H, arma::vec R, arma::mat Y, arma::mat W);
-RcppExport SEXP _VARMA_DKsmoothMF(SEXP BSEXP, SEXP qSEXP, SEXP HSEXP, SEXP RSEXP, SEXP YSEXP, SEXP WSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::mat >::type B(BSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type q(qSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type H(HSEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type R(RSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Y(YSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type W(WSEXP);
-    rcpp_result_gen = Rcpp::wrap(DKsmoothMF(B, q, H, R, Y, W));
+    rcpp_result_gen = Rcpp::wrap(Kfilter(Y, B, q, H, R));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -106,10 +89,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"_VARMA_comp_form", (DL_FUNC) &_VARMA_comp_form, 1},
     {"_VARMA_stack_obs", (DL_FUNC) &_VARMA_stack_obs, 3},
     {"_VARMA_advance_vec", (DL_FUNC) &_VARMA_advance_vec, 2},
+    {"_VARMA_long_run_var", (DL_FUNC) &_VARMA_long_run_var, 4},
     {"_VARMA_VARMA_MSE", (DL_FUNC) &_VARMA_VARMA_MSE, 3},
-    {"_VARMA_KLike", (DL_FUNC) &_VARMA_KLike, 5},
-    {"_VARMA_DKsmooth", (DL_FUNC) &_VARMA_DKsmooth, 5},
-    {"_VARMA_DKsmoothMF", (DL_FUNC) &_VARMA_DKsmoothMF, 6},
+    {"_VARMA_Kfilter", (DL_FUNC) &_VARMA_Kfilter, 5},
     {NULL, NULL, 0}
 };
 
