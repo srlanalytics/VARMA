@@ -158,11 +158,10 @@ VARMA_est <- function(data, order, shrink_P = 0, shrink_Q = 0, P_in = NULL, Q_in
 # }
 
 
-VARMA_select <- function(data, shrink_P = 0, shrink_Q = 0){
+VARMA_select <- function(data, shrink_P = 0, shrink_Q = 0, pen = 0.1){
  
   m <- NCOL(data)
   n_obs <- sum(is.finite(data))
-  pen <- 0.1
  
   estAR <- VARMA_est(data, c(1,0), shrink_P = shrink_P, shrink_Q = shrink_Q)
   ucv <- sum(data^2, na.rm = TRUE)
@@ -216,11 +215,10 @@ VARMA_select <- function(data, shrink_P = 0, shrink_Q = 0){
 }
 
 
-VARMA_select_multi <- function(data, models = 3, shrink_P = 0, shrink_Q = 0){
+VARMA_select_multi <- function(data, models = 3, shrink_P = 0, shrink_Q = 0, pen = 0.1){
   
   m <- NCOL(data)
   n_obs <- sum(is.finite(data))
-  pen <- 0.1
   scores <- matrix(0,8,8)
   
   estAR <- VARMA_est(data, c(1,0), shrink_P = shrink_P, shrink_Q = shrink_Q)
@@ -293,6 +291,7 @@ VARMA_SS <- function(data, P, Q, Sig = NULL){
   }else{
     E <- Sig
   }
+  E <- as.matrix(E)
   
   m <- NCOL(data)
   sP <- NCOL(P)

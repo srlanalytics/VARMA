@@ -90,6 +90,7 @@ Rcpp::List Kfilter(arma::mat Y,     // Observations Y
   uword T  = Y.n_cols; //number of time peridos
   uword m  = B.n_rows; //number of factors
   uword p  = B.n_cols/m; //number of lags 
+  uword k  = H.n_rows;
   uword sA = m*p; //size of companion matrix A
   
   //Making the A matrix
@@ -106,7 +107,7 @@ Rcpp::List Kfilter(arma::mat Y,     // Observations Y
   mat P0 = long_run_var(A,Q,m,p);
   mat P1 = P0;
   cube P0str(sA,sA,T+1); P0str.slice(0) = P0;
-  mat VarY, ZP(sA,T,fill::zeros), Z(sA,T+1,fill::zeros),  
+  cube VarY(k,k,T, fill::zeros); mat ZP(sA,T,fill::zeros), Z(sA,T+1,fill::zeros),  
   K;
   uword i;
   double rn; double yn; double s;
@@ -151,6 +152,7 @@ Rcpp::List Kfilter(arma::mat Y,     // Observations Y
       P0 = symmatu((P1+trans(P1))/2); //enforce pos semi def
       P0str.slice(t+1) = P0;
     }
+    VarY.slice(t) = (H*P0*trans(H) + R);
   }
   Z.shed_col(0);
   P0str.shed_slice(0);
@@ -159,8 +161,9 @@ Rcpp::List Kfilter(arma::mat Y,     // Observations Y
   Rcpp::List rtrn;
   rtrn["Lik"]  = Lik;
   rtrn["Z"]  = Z; //includes pre-sample value in position 0
-  rtrn["var"]  = P0str; // includes pre-sample value in position 0
+  rtrn["P0"]  = P0str; // includes pre-sample value in position 0
   rtrn["Yfit"] = H*Z;
+  rtrn["Yvar"] = VarY;
   //rtrn(3)  = PS_lag;
   return(rtrn);
 }
